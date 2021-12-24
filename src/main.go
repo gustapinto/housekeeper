@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"strings"
 	"os"
 	"os/exec"
+	"strings"
 
 	fs "github.com/fsnotify/fsnotify"
 )
@@ -24,7 +24,35 @@ func TxtHandler(filePath string) {
 	fmt.Println(string(content))
 }
 
-func MakeFilesystemWatcher(path string) {
+func HandleFilesystemWatcherEvents(done chan bool, watcher *fs.Watcher) {
+	for {
+		// A select statement works like a switch but handling
+		// channel operations instead of normal values
+		select {
+		// Get fsnotify events and dispatch workers to handle
+		case event, _ := <-watcher.Events:
+			operation := event.Op
+
+			// Check if it is a creation event and
+			if operation == fs.Create {
+				filename := event.Name
+
+				switch {
+				case strings.Contains(filename, ".txt"):
+					TxtHandler(filename)
+
+				case strings.Contains(filename, ".py"):
+					PyHandler(filename)
+				}
+			}
+		// Check for fsnotify error events
+		case err, _ := <-watcher.Errors:
+			fmt.Println(err)
+		}
+	}
+}
+
+func MakeFilesystemWatchers(paths []string) {
 	watcher, _ := fs.NewWatcher()
 
 	defer watcher.Close()
@@ -32,39 +60,20 @@ func MakeFilesystemWatcher(path string) {
 	done := make(chan bool)
 
 	// Opens a goroutine to handle file watching
-	go func() {
-		for {
-			// A select statement works like a switch but handling
-			// channel operations instead of normal values
-			select {
-			// Get fsnotify events and dispatch workers to handle
-			case event, _ := <-watcher.Events:
-				operation := event.Op
+	go HandleFilesystemWatcherEvents(done, watcher)
 
-				// Check if it is a creation event and
-				if (operation == fs.Create) {
-					filename := event.Name
-
-					switch {
-					case strings.Contains(filename, ".txt"):
-						TxtHandler(filename)
-
-					case strings.Contains(filename, ".py"):
-						PyHandler(filename)
-					}
-				}
-			// Check for fsnotify error events
-			case err, _ := <-watcher.Errors:
-				fmt.Println(err)
-			}
-		}
-	}()
-
-	_ = watcher.Add(path)
+	for _, path := range paths {
+		watcher.Add(path)
+	}
 
 	<-done
 }
 
 func main() {
-	MakeFilesystemWatcher("../fixtures/")
+	pathsToWatch := []string{
+		"./",
+		"../fixtures/",
+	}
+
+	MakeFilesystemWatchers(pathsToWatch)
 }
