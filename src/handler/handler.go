@@ -1,22 +1,31 @@
 package handler
 
 import (
-	"fmt"
+	"log"
 	"os"
 	"os/exec"
 )
 
 func PyHandler(script string) {
-	out, _ := exec.Command("python", script).Output()
+	// Executes a python script using a system call on the script path
+	out, err := exec.Command("python", script).Output()
 
-	fmt.Println(out)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Print(out)
 }
 
 func TxtHandler(filePath string) {
 	// Read a file content using the os package, this is not so
 	// efficient on larger files but is a pratical and high level way
 	// of doing it
-	content, _ := os.ReadFile(filePath)
+	content, err := os.ReadFile(filePath)
 
-	fmt.Println(string(content))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Print(string(content))
 }
