@@ -1,7 +1,9 @@
 package fswatcher
 
 import (
-	"fmt"
+	"log"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/fsnotify/fsnotify"
@@ -32,24 +34,52 @@ func Watch(done chan bool, watcher *fsnotify.Watcher) {
 			}
 		// Check for fsnotify error events
 		case err, _ := <-watcher.Errors:
-			fmt.Println(err)
+			log.Fatal(err)
 		}
 	}
 }
 
-func MakeFilesystemWatchers(paths []string) {
-	watcher, _ := fsnotify.NewWatcher()
+func MakeFilesystemWatcher(path string) {
+	watcher, err := fsnotify.NewWatcher()
 
 	defer watcher.Close()
 
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	done := make(chan bool)
 
-	// Opens a goroutine to handle file watching
 	go Watch(done, watcher)
 
-	for _, path := range paths {
-		watcher.Add(path)
+	watcher.Add(path)
+
+	<-done
+}
+
+func MakeRecursiveFilesystemWatcher(path string) {
+	watcher, err := fsnotify.NewWatcher()
+
+	defer watcher.Close()
+
+	if err != nil {
+		log.Fatal(err)
 	}
+
+	// Add recursion like feature to watcher by walking over the
+	// directories inside the desired path and adding they to the watcher
+	// list
+	filepath.Walk(path, func(p string, fi os.FileInfo, err error) error {
+		if fi.Mode().IsDir() {
+			return watcher.Add(p)
+		}
+
+		return nil
+	})
+
+	done := make(chan bool)
+
+	go Watch(done, watcher)
 
 	<-done
 }

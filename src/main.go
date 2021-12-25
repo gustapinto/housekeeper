@@ -1,14 +1,20 @@
 package main
 
 import (
+	"flag"
+
 	"housekeeper/src/fswatcher"
 )
 
 func main() {
-	pathsToWatch := []string{
-		"./",
-		"../fixtures/",
-	}
+	path := flag.String("p", "../fixtures", "Define a path to watch")
+	recursive := flag.Bool("r", false, "Define recursion on the watched path")
 
-	fswatcher.MakeFilesystemWatchers(pathsToWatch)
+	flag.Parse()
+
+	if *recursive {
+		fswatcher.MakeRecursiveFilesystemWatcher(*path)
+	} else {
+		fswatcher.MakeFilesystemWatcher(*path)
+	}
 }
