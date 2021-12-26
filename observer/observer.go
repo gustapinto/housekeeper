@@ -9,23 +9,30 @@ import (
 )
 
 type Observer interface {
-	Observe()
 	HandleEvent(fsnotify.Event)
 	HandleError(error)
 }
 
-func getRecursiveDirs(fswatcher *fsnotify.Watcher, path string, info os.FileInfo, err error) error {
+// Enable fsnotify to recusive watch a root directory
+func watchRecursive(fswatcher *fsnotify.Watcher, path string) {
+	err := filepath.Walk(path, func(walkPath string, info os.FileInfo, err error) error {
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if info.Mode().IsDir() {
+			return fswatcher.Add(walkPath)
+		}
+
+		return nil
+	})
+
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	if info.Mode().IsDir() {
-		return fswatcher.Add(path)
-	}
-
-	return nil
 }
 
+// Dispatch Observer handlers on event and error
 func watchFilesystemEvents(fswatcher *fsnotify.Watcher, observer Observer) {
 	for {
 		select {
@@ -38,7 +45,8 @@ func watchFilesystemEvents(fswatcher *fsnotify.Watcher, observer Observer) {
 	}
 }
 
-func Watch(path string, observer Observer) {
+// Recursive watch a single root path and dispatch Observer handlers
+func Observe(path string, observer Observer) {
 	fswatcher, err := fsnotify.NewWatcher();
 
 	if err != nil {
@@ -47,12 +55,27 @@ func Watch(path string, observer Observer) {
 
 	defer fswatcher.Close()
 
-	err = filepath.Walk(path, func(walkPath string, info os.FileInfo, err error) error {
-		return getRecursiveDirs(fswatcher, walkPath, info, err)
-	})
+	watchRecursive(fswatcher, path)
+
+	done := make(chan bool)
+
+	go watchFilesystemEvents(fswatcher, observer)
+
+	<-done
+}
+
+// Recursive watch multiple root paths and dispatch Observer handlers
+func ObserveMultiple(paths []string, observer Observer) {
+	fswatcher, err := fsnotify.NewWatcher();
 
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	defer fswatcher.Close()
+
+	for _, path := range paths {
+		watchRecursive(fswatcher, path)
 	}
 
 	done := make(chan bool)
