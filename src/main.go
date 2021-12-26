@@ -1,20 +1,24 @@
 package main
 
 import (
-	"flag"
+	// "flag"
 
-	"housekeeper/src/fswatcher"
+	// "housekeeper/src/fswatcher"
+	"housekeeper/src/observer/fixtureObserver"
 )
 
 func main() {
-	path := flag.String("p", "../fixtures", "Define a path to watch")
-	recursive := flag.Bool("r", false, "Define recursion on the watched path")
+	// path := flag.String("p", "../fixtures", "Define a path to watch")
+	// recursive := flag.Bool("r", false, "Define recursion on the watched path")
 
-	flag.Parse()
+	// flag.Parse()
 
-	if *recursive {
-		fswatcher.MakeRecursiveFilesystemWatcher(*path)
-	} else {
-		fswatcher.MakeFilesystemWatcher(*path)
-	}
+	// if *recursive {
+	// 	fswatcher.MakeRecursiveFilesystemWatcher(*path)
+	// } else {
+	// 	fswatcher.MakeFilesystemWatcher(*path)
+	// }
+	fo := fixtureObserver.FixtureObserver{}
+
+	fo.Observe()
 }
